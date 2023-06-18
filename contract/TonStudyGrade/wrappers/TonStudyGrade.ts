@@ -110,19 +110,14 @@ export class TonStudyGrade implements Contract {
         });
     }
 
-    async sendReplace( provider: ContractProvider, via: Sender, value: bigint, newGradeValue: number, newGradeComment: string )
+    async sendReplace( provider: ContractProvider, via: Sender, value: bigint, newGradeAddress: Address )
     {
         await provider.internal(via, {
             value,
             body: beginCell()
                 .storeUint( 0x00005678, 32 )
                 .storeUint( 0, 64 )
-                .storeUint( newGradeValue, 8 )
-                .storeSlice( 
-                    beginCell()
-                        .storeStringTail( newGradeComment )
-                    .asSlice()
-                )
+                .storeAddress( newGradeAddress )
             .endCell(),
         });
     }

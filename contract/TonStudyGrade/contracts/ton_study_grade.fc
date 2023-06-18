@@ -78,24 +78,17 @@ slice get_replacement_grade() method_id
 }
 
 () replace_grade(
-    int new_grade_value,
-    slice replacement_grade_comment,
+    slice replacement_grade_address,
     cell royalty_params
 ) impure inline
 {
-    ;; TODO: Implement new grade deployment
-    ;; slice replacement_grade_address = replacementGradeComment;
+    store_data(
+        grade::status::replaced(),
+        replacement_grade_address,
+        royalty_params
+    );
 
-
-    ;; store_data(
-    ;;     grade::status::replaced(),
-    ;;     replacement_grade_address,
-    ;;     royalty_params
-    ;; );
-
-    ;; throw( 1 );
-
-    throw( 503 );
+    throw( 1 );
 }
 
 () recv_internal(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) impure
@@ -142,10 +135,9 @@ slice get_replacement_grade() method_id
 
     if( op == grade::op::replace() )
     {
-        int new_grade_value = in_msg_body~load_uint(8);
-        slice new_grade_comment = "IMPLEMENT GRADE REPLACEMENT";
+        slice new_grade_address = in_msg_body~load_msg_addr();
 
-        replace_grade( new_grade_value, new_grade_comment, royalty );
+        replace_grade( new_grade_address, royalty );
     }
     
     throw( 404 );

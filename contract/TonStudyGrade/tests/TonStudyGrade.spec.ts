@@ -87,31 +87,30 @@ describe('TonStudyGrade', () => {
         expect(statusAfterRemove).toEqual( 0x02 );
     });
 
-    // it('should replace grade', async () => {
-    //     const statusBeforeRemove = await tonStudyGrade.getStatus();
-    //     expect(statusBeforeRemove).toEqual( 0x01 );
+    it('should replace grade', async () => {
+        const statusBeforeRemove = await tonStudyGrade.getStatus();
+        expect(statusBeforeRemove).toEqual( 0x01 );
 
-    //     const removeResult = await tonStudyGrade.sendReplace(
-    //         ( await blockchain.treasury('deployer') ).getSender(),
-    //         toNano('0.05'),
-    //         4,
-    //         "Replacement grade comment"
-    //     );
+        const removeResult = await tonStudyGrade.sendReplace(
+            ( await blockchain.treasury('deployer') ).getSender(),
+            toNano('0.05'),
+            ( await blockchain.treasury('deployer') ).getSender().address
+        );
 
-    //     expect(removeResult.transactions).toHaveTransaction({
-    //         from: ( await blockchain.treasury('deployer') ).getSender().address,
-    //         to: tonStudyGrade.address,
-    //         success: true,
-    //         exitCode: 1
-    //     });
+        expect(removeResult.transactions).toHaveTransaction({
+            from: ( await blockchain.treasury('deployer') ).getSender().address,
+            to: tonStudyGrade.address,
+            success: true,
+            exitCode: 1
+        });
 
-    //     const replacementGradeGotFromOldGrade = await tonStudyGrade.getReplacementGrade()
+        const replacementGradeGotFromOldGrade = await tonStudyGrade.getReplacementGrade()
 
-    //     const replacementGrade = await blockchain.getContract( replacementGradeGotFromOldGrade )
+        const replacementGrade = await blockchain.getContract( replacementGradeGotFromOldGrade )
 
-    //     expect(replacementGrade).toBeDefined();
+        expect(replacementGrade).toBeDefined();
 
-    //     const statusAfterRemove = await tonStudyGrade.getStatus();
-    //     expect(statusAfterRemove).toEqual( 0x03 );
-    // });
+        const statusAfterRemove = await tonStudyGrade.getStatus();
+        expect(statusAfterRemove).toEqual( 0x03 );
+    });
 });
