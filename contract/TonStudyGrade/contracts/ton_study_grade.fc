@@ -1,0 +1,152 @@
+#include "imports/stdlib.fc";
+#include "imports/grade-status.fc";
+#include "imports/grade-errorcodes.fc";
+#include "imports/grade-op.fc";
+
+;;
+;; Storage structure:
+;; 8 bits of unsigned integer grade status
+;;
+;; slice with replacement grade address
+;;
+;; Royalty params: 
+;;   8 bits of unsigned integer grade value
+;;   8 bits of unsigned integer grade max value
+;;   slice with teacher address
+;;   slice with student address
+;;   slice with study organisation address
+;;   64 bits unsigned integer with grade creation time
+;;   slice with comment string
+;;
+
+_ load_data()
+{
+    slice ds = get_data().begin_parse();
+
+    return(
+        ds~load_uint(8),
+        ds~load_msg_addr(),
+        ds~load_ref()
+    );
+}
+
+cell royalty_params() method_id
+{
+    var ( _, _, royalty ) = load_data();
+    return royalty;
+}
+
+int status() method_id
+{
+    var ( status, _, _ ) = load_data();
+    return status;
+}
+
+() store_data(
+    int status,
+    slice replacement_grade,
+    cell royalty_params
+) impure
+{
+    set_data(
+        begin_cell()
+        .store_uint( status, 8 )
+        .store_slice( replacement_grade )
+        .store_ref( royalty_params )
+        .end_cell()
+    );
+}
+
+() remove_grade(
+    slice replacement_grade,
+    cell royalty_params
+) impure inline
+{
+    store_data(
+        grade::status::removed(),
+        replacement_grade,
+        royalty_params
+    );
+
+    throw( 1 );
+}
+
+slice get_replacement_grade() method_id
+{
+    var ( _, replacement_grade, _ ) = load_data();
+    return replacement_grade;
+}
+
+() replace_grade(
+    int new_grade_value,
+    slice replacement_grade_comment,
+    cell royalty_params
+) impure inline
+{
+    ;; TODO: Implement new grade deployment
+    ;; slice replacement_grade_address = replacementGradeComment;
+
+
+    ;; store_data(
+    ;;     grade::status::replaced(),
+    ;;     replacement_grade_address,
+    ;;     royalty_params
+    ;; );
+
+    ;; throw( 1 );
+
+    throw( 503 );
+}
+
+() recv_internal(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) impure
+{
+    if ( in_msg_body.slice_empty?() ) ;; ignore empty messages
+    {
+        return ();
+    }
+
+    slice cs = in_msg_full.begin_parse();
+    int flags = cs~load_uint(4);
+    
+    if (flags & 1) ;; ignore all bounced messages
+    {
+        return ();
+    }
+
+    slice sender_address = cs~load_msg_addr();
+
+    int op = in_msg_body~load_uint(32);
+    int query_id = in_msg_body~load_uint(64);
+
+    var ( status, replacement_grade, royalty ) = load_data();
+
+    throw_if( grade::errorcode::gone(), status != grade::status::normal() );
+
+    slice royaltyParser = royalty.begin_parse();
+
+    royaltyParser~load_uint(8);
+    royaltyParser~load_uint(8);
+    slice teacher_address = royaltyParser~load_msg_addr();
+    slice studyOrganisation_address = royaltyParser~load_msg_addr();
+
+    throw_unless(
+        grade::errorcode::unauthorized(),
+        equal_slices(sender_address, teacher_address) |
+        equal_slices(sender_address, studyOrganisation_address)
+    );
+
+    if( op == grade::op::remove() )
+    {
+        remove_grade( replacement_grade, royalty );
+    }
+
+    if( op == grade::op::replace() )
+    {
+        int new_grade_value = in_msg_body~load_uint(8);
+        slice new_grade_comment = "IMPLEMENT GRADE REPLACEMENT";
+
+        replace_grade( new_grade_value, new_grade_comment, royalty );
+    }
+    
+    throw( 404 );
+}

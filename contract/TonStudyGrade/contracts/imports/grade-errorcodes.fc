@@ -1,0 +1,2 @@
+int grade::errorcode::unauthorized() asm "401 PUSHINT";
+int grade::errorcode::gone() asm "410 PUSHINT";

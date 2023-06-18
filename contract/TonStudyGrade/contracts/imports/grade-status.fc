@@ -1,0 +1,3 @@
+int grade::status::normal() asm "0x01 PUSHINT";
+int grade::status::removed() asm "0x02 PUSHINT";
+int grade::status::replaced() asm "0x03 PUSHINT";

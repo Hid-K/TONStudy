@@ -1,0 +1,2 @@
+int grade::op::remove() asm "0x00001234 PUSHINT";
+int grade::op::replace() asm "0x00005678 PUSHINT";
