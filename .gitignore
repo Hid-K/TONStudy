@@ -1,11 +1,7 @@
 .DS_Store
 
-TonStudyGrade/node_modules
-TonStudyGrade/temp
-TonStudyGrade/build
-
-TonStudyTeacher/node_modules
-TonStudyTeacher/temp
-TonStudyTeacher/build
+contract/*/node_modules
+contract/*/temp
+contract/*/build
 
 */.DS_Store
