@@ -1,7 +1,6 @@
 #include "imports/stdlib.fc";
 #include "imports/grade-status.fc";
 #include "imports/grade-errorcodes.fc";
-#include "imports/grade-op.fc";
 
 ;;
 ;; Storage structure:
@@ -30,12 +29,18 @@ _ load_data()
     );
 }
 
+;; CRC32 0xE59A394B
+;;
+;;
 cell royalty_params() method_id
 {
     var ( _, _, royalty ) = load_data();
     return royalty;
 }
 
+;;
+;;
+;;
 int status() method_id
 {
     var ( status, _, _ ) = load_data();
@@ -57,6 +62,10 @@ int status() method_id
     );
 }
 
+;;
+;;
+;;
+int grade::op::remove() asm "0xE4F53A95 PUSHINT";
 () remove_grade(
     slice replacement_grade,
     cell royalty_params
@@ -77,6 +86,10 @@ slice get_replacement_grade() method_id
     return replacement_grade;
 }
 
+;;
+;;
+;;
+int grade::op::replace() asm "0xFE8690AE PUSHINT";
 () replace_grade(
     slice replacement_grade_address,
     cell royalty_params
@@ -140,5 +153,5 @@ slice get_replacement_grade() method_id
         replace_grade( new_grade_address, royalty );
     }
     
-    throw( 404 );
+    throw( 501 );
 }

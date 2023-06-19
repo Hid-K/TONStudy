@@ -104,7 +104,7 @@ export class TonStudyGrade implements Contract {
         await provider.internal(via, {
             value,
             body: beginCell()
-                .storeUint( 0x00001234, 32 )
+                .storeUint( 0xE4F53A95, 32 )
                 .storeUint( 0, 64 )
             .endCell(),
         });
@@ -115,7 +115,7 @@ export class TonStudyGrade implements Contract {
         await provider.internal(via, {
             value,
             body: beginCell()
-                .storeUint( 0x00005678, 32 )
+                .storeUint( 0xFE8690AE, 32 )
                 .storeUint( 0, 64 )
                 .storeAddress( newGradeAddress )
             .endCell(),
