@@ -1,5 +1,277 @@
 #include "imports/stdlib.fc";
 
-() recv_internal(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) impure {
+;;
+;; Storage structure:
+;;  
+;;  Service data (ref):
+;;    uint256 of public key
+;;    uint64 of seqno
+;;
+;;  Assigned study organisations info linked list ( ref ):
+;;    slice with study organisation address
+;;    uint3 with assignation status ( request sent, reauest approved )
+;;    ref to next assigned study organisation info ( default: null )
+;;
+;;   Personal info ( ref ):
+;;     slice with first name ( ref )
+;;     slice with second name ( ref )
+;;     slice with sur name ( ref )
+;;     uint64 with date of birth in unix timestamp
+;;
 
+_ load_data()
+{
+    slice ds = get_data().begin_parse();
+
+    return(
+        ds~load_ref(), ;; Service data
+        ds~load_ref(),  ;; Assigned study organisations first record
+        ds~load_ref()  ;; Personal info
+    );
+}
+
+() store_data(
+    cell service_data,
+    cell first_assignation_record,
+    cell personal_info
+) impure
+{
+    set_data(
+        begin_cell()
+            .store_ref( service_data )
+            .store_ref( first_assignation_record )
+            .store_ref( personal_info )
+        .end_cell()
+    );
+}
+
+;; CRC32 0xD7A89922
+;; CRC8 0xCF
+;; Called from recv_external by teacher to send assignation request to study organisation
+;;
+int teacher::op::send_study_organisation_assignation_request() asm "0xD7A89922 PUSHINT";
+int teacher::op8::send_study_organisation_assignation_request() asm "0xCF PUSHINT";
+() send_study_organisation_assignation_request(
+    cell first_assignation_record,
+    slice study_organisation_address
+) impure inline
+{
+    throw( -1 );
+}
+
+;; CRC32 0x20785253
+;; Called by study organisation to approve request
+;;
+int teacher::op::approve_study_organisation_assignation_request() asm "0x20785253 PUSHINT";
+() approve_study_organisation_assignation_request(
+    cell first_assignation_record,
+    slice study_organisation_address
+) impure inline
+{
+    throw( -2 );
+}
+
+;; CRC32 0x6F020682
+;; CRC8 0x76
+;; Called by study organisation or by recv_external to remove assignation
+;;
+int teacher::op::remove_study_organisation_assignation() asm "0x6F020682 PUSHINT";
+int teacher::op8::remove_study_organisation_assignation() asm "0x76 PUSHINT";
+() remove_study_organisation_assignation(
+    cell first_assignation_record,
+    slice study_organisation_address
+) impure inline
+{
+    throw( -3 );
+}
+
+int check_student_to_study_organisation_assignation(
+    slice student_address,
+    slice study_organisation_address
+)
+{
+    ;; TODO: Implement check;
+    return 1;
+}
+
+;; CRC32 0xDE271A50
+;; CRC8 0xD6
+;; Returns deployed grade address
+;;
+int teacher::op8::deploy_new_grade() asm "0xD6 PUSHINT";
+() deploy_new_grade(
+    int value,
+    int maxValue,
+    slice student_address,
+    slice study_organisation_address,
+    int creation_time,
+    slice comment
+) inline
+{
+    if( check_student_to_study_organisation_assignation( student_address, study_organisation_address ) > 0 )
+    {
+        ;; TODO: Implement deploying
+        throw( -4 );
+    } 
+
+    throw( -5 );
+}
+
+int check_is_grade_exists(
+    slice grade_address
+)
+{
+    return 1;
+}
+
+;; CRC8 0xF8
+;; Returns deployed grade address
+;;
+int teacher::op8::replace_grade() asm "0xF8 PUSHINT";
+() replace_grade(
+    slice old_grade_address,
+    int value,
+    int maxValue,
+    slice student_address,
+    slice study_organisation_address,
+    int creation_time,
+    slice comment
+) inline
+{
+    if( check_is_grade_exists(old_grade_address) <= 0 )
+    {
+        throw( 404 );
+    } 
+    if( check_student_to_study_organisation_assignation( student_address, study_organisation_address ) > 0 )
+    {
+        ;; TODO: Implement deploying
+        throw( -4 );
+    } 
+
+    throw( -5 );
+}
+
+() recv_internal(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) impure
+{
+    if ( in_msg_body.slice_empty?() ) ;; ignore empty messages
+    {
+        return ();
+    }
+
+    slice cs = in_msg_full.begin_parse();
+    int flags = cs~load_uint(4);
+    
+    if (flags & 1) ;; ignore all bounced messages
+    {
+        return ();
+    }
+
+    slice sender_address = cs~load_msg_addr();
+
+    int op = in_msg_body~load_uint(32);
+    int query_id = in_msg_body~load_uint(64);
+
+    var ( _, first_study_organisation_assignation_record, _ ) = load_data();
+
+    if( op == teacher::op::approve_study_organisation_assignation_request() )
+    {
+        approve_study_organisation_assignation_request(
+            first_study_organisation_assignation_record,
+            sender_address
+        );
+    }
+
+    if( op == teacher::op::remove_study_organisation_assignation() )
+    {
+        remove_study_organisation_assignation(
+            first_study_organisation_assignation_record,
+            sender_address
+        );
+    }
+
+    throw( 404 );
+}
+
+() recv_external( slice in_msg ) impure
+{
+    var signature = in_msg~load_bits(512);
+    var cs = in_msg;
+    var (valid_until, msg_seqno) = (
+        cs~load_uint(32),
+        cs~load_uint(32)
+    );
+    throw_if(36, valid_until <= now());
+
+    var (
+        service_data,
+        first_assignation_record,
+        personal_info
+    ) = load_data();
+
+    slice service_data_parser = service_data.begin_parse();
+
+    int public_key = service_data_parser~load_uint(256);
+
+    throw_unless(35, check_signature(slice_hash(in_msg), signature, public_key));
+    accept_message();
+
+    int stored_seqno = service_data_parser~load_uint(64);
+
+    service_data = begin_cell()
+        .store_uint( public_key, 256 )
+        .store_uint( stored_seqno + 1, 64 )
+    .end_cell();
+
+    store_data(
+        service_data,
+        first_assignation_record,
+        personal_info
+    );
+    commit();
+
+    cs~touch();
+    int op = cs~load_uint(8);
+
+    if( op == teacher::op8::deploy_new_grade() )
+    {
+        deploy_new_grade(
+            cs~load_uint(8),
+            cs~load_uint(8),
+            cs~load_msg_addr(),
+            cs~load_msg_addr(),
+            cs~load_uint(64),
+            cs~load_ref().begin_parse()
+        );
+    }
+
+    if (op == teacher::op8::remove_study_organisation_assignation())
+    {
+        remove_study_organisation_assignation(
+            first_assignation_record,
+            cs~load_msg_addr()
+        );
+    }
+
+    if (op == teacher::op8::send_study_organisation_assignation_request())
+    {
+        send_study_organisation_assignation_request(
+            first_assignation_record,
+            cs~load_msg_addr()
+        );
+    }
+
+    if ( op == teacher::op8::replace_grade() )
+    {
+        replace_grade(
+            cs~load_msg_addr(),
+            cs~load_uint(8),
+            cs~load_uint(8),
+            cs~load_msg_addr(),
+            cs~load_msg_addr(),
+            cs~load_uint(64),
+            cs~load_ref().begin_parse()
+        );
+    }
+
+    throw( 501 );
 }
